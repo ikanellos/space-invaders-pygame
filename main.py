@@ -128,6 +128,9 @@ enemy_x  = []
 enemy_y  = []
 enemy_dx = []
 enemy_dy = []
+# This will hold an offset per enemy, so that
+# they respawn lower each time to make the game more difficult
+enemy_vertical_offset = []
 # ENEMY LIST initialization
 for i in range(NUM_ENEMIES):
     # Enemy image initial (random) location
@@ -136,12 +139,14 @@ for i in range(NUM_ENEMIES):
     # Setup initial enemy movement parameters
     enemy_dx.append(0.3)
     enemy_dy.append(enemy_image.get_height() / 3)
+    enemy_vertical_offset.append(0)
 # Initial bullet position at spaceship position
 bullet_x = player_x + 12
 bullet_y = 480-bullet_image.get_height()
 # Bullet movement parameter
 bullet_dy = -1
-# NOTE: bullet doesn't move on the x-axis
+# NOTE: bullet doesn't move on the x-axis.
+# NOTE: we allow 1 bullet at a time on the screen
 # Bullet visibility
 bullet_visible = False
 # ----------------------------------------------------------------- #
@@ -258,8 +263,10 @@ while game_running:
                 # Reset invisibility of bullet - coordinates are set at new space bar press
                 bullet_visible = False
                 # Reset enemy appearance
+                enemy_vertical_offset[i] += 2
                 enemy_x[i] = random.randint(0,SCREEN_WIDTH-enemy_image.get_width())
-                enemy_y[i] = random.randint(int(SCREEN_HEIGHT*0.01),int(SCREEN_HEIGHT*0.3))
+                # Also add extra offset on respawn
+                enemy_y[i] = random.randint(int(SCREEN_HEIGHT*0.01) + enemy_vertical_offset[i],int(SCREEN_HEIGHT*0.3) + enemy_vertical_offset[i])
 
                 # Score increment
                 score += 5
