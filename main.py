@@ -195,14 +195,14 @@ while game_running:
                 # Play bullet sound
                 bullet_sound.play()
 
-        # NEED to fix the following:
-        #   arrow 1 is pressed
-        #   arrow 2 is pressed
-        #   arrow 1 is released -> this leads to the ship stopping
+        # Stop movement as long as we don't have another key pressed
         if event.type == pygame.KEYUP:
-            # Stop movement speed
-            if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT:
+            # Stop movement speed if we leave key and no other speed key is pressed
+            if event.key == pygame.K_LEFT and dx != 0.4:
                 dx = 0
+            if event.key == pygame.K_RIGHT and dx != -0.4:
+                dx = 0
+                
 
     # -------------------------------------------------------------- #
     # UPDATE movements that happen without any condition
