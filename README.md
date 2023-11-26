@@ -11,6 +11,7 @@ My code is based on the above, but differs in code structure and certain parts o
 - Sounds are loaded at initialization & only played when needed. Original code re-instantiates a sound object whenever a sound needs to be played.
 - Enemies and Bullets stop being redrawn after game over. Original implementation 
   simply moved them out of the viewport.
+- Enemies increase in speed after being destroyed. Also they spawn ever more closely to the player
 
 #### Minor code variable differences:
 - Constants have been moved to the top of the code and are used throughout with their name instead of value.
@@ -18,6 +19,8 @@ My code is based on the above, but differs in code structure and certain parts o
 
 #### Game Logic / Presentation differences:
 - Different images for background, aliens, bullets.
+- Added enter initials and high score display after game over (top 10 scorers are kept on a file)
+- After game over and initials, player has the option to restart or quit
 
 #### Sounds & Sprites
 Have been downloaded from freeware sites.

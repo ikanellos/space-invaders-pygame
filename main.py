@@ -28,16 +28,68 @@ def render_score(x, y, score_display, score, ships):
     screen.blit(rendered_ships, (10,10))
 #--------------------------------------------------------- #
 # Render Game over text
-def game_over_render(game_over_display, game_over_score, score, ships):
+def game_over_render(game_over_display_font, game_over_score_font, score, ships, chars_inserted = []):
     global screen
     global SCREEN_HEIGHT
     global SCREEN_WIDTH
-    rendered_game_over = game_over_display.render("GAME OVER", True, (255, 105, 105))
-    size_x, size_y = game_over_display.size("GAME OVER")
-    screen.blit(rendered_game_over, ((SCREEN_WIDTH/2 - size_x/2), (SCREEN_HEIGHT/2 - size_y/2)))
-    rendered_game_over_score = game_over_score.render(f"Score: {score}\nEnemies Killed:{ships}", True, (255,100,100))
-    score_size_x, score_size_y = game_over_score.size(f"Score: {score} - Enemies Killed:{ships}")
-    screen.blit(rendered_game_over_score, ((SCREEN_WIDTH/2 - score_size_x/2), (SCREEN_HEIGHT/2 + size_y/2)+score_size_y))
+    rendered_game_over = game_over_display_font.render("GAME OVER", True, (255, 105, 105))
+    size_x, size_y = game_over_display_font.size("GAME OVER")
+    screen.blit(rendered_game_over, ((SCREEN_WIDTH/2 - size_x/2), (SCREEN_HEIGHT/2 - size_y/2 - 100)))
+    rendered_game_over_score = game_over_score_font.render(f"Score: {score} - Enemies Killed:{ships}", True, (255,100,100))
+    score_size_x, score_size_y = game_over_score_font.size(f"Score: {score} - Enemies Killed:{ships}")
+    screen.blit(rendered_game_over_score, ((SCREEN_WIDTH/2 - score_size_x/2), (SCREEN_HEIGHT/2 + size_y/2)+score_size_y - 100))
+    # Render character input
+    rendered_insert_initials = game_over_score_font.render("INSERT INITIALS", True, ((255, 105, 105)))
+    initials_size_x, initials_size_y = game_over_score_font.size("INSERT INITIALS")
+    # Center on x and 
+    screen.blit(rendered_insert_initials, ((SCREEN_WIDTH/2 - initials_size_x/2), (SCREEN_HEIGHT/2 + size_y/2 + score_size_y/2) + initials_size_y-50))
+    # Characters input so far. Show empty spaces for characters not inserted
+    render_string = "_ _ _" if not chars_inserted else " ".join(chars_inserted)
+    if chars_inserted and len(chars_inserted) < 3:
+        render_string += " _" * (3-len(chars_inserted))
+    rendered_initials = game_over_score_font.render(render_string, True, ((255, 105, 105)))
+    added_inits_x, added_inits_y = game_over_score_font.size(render_string)
+    screen.blit(rendered_initials, ((SCREEN_WIDTH/2 - added_inits_x/2), (SCREEN_HEIGHT/2 + size_y/2 + score_size_y/2 + initials_size_y/2) + added_inits_y-30))
+#--------------------------------------------------------- #
+def show_high_scores(game_over_score_font, score_list):
+    '''Display scores from high score file'''
+    global screen
+    global SCREEN_HEIGHT
+    global SCREEN_WIDTH
+
+    rendered_high_scores = game_over_score_font.render("HIGH SCORES", True, (255, 255, 255))
+    high_scores_x, high_scores_y = game_over_score_font.size("HIGH SCORES")
+    screen.blit(rendered_high_scores, ((SCREEN_WIDTH/2-high_scores_x/2), (high_scores_y)))
+
+    # Display high scores
+    for offset, high_scorer in enumerate(score_list):
+        rendered_high_scorer = game_over_score_font.render(f"{high_scorer[0]}: {high_scorer[1]}", True, (255, 255, 255))
+        high_scorer_x, high_scorer_y = game_over_score_font.size(f"{high_scorer[0]}: {high_scorer[1]}")
+        screen.blit(rendered_high_scorer, ((SCREEN_WIDTH/2-high_scorer_x/2), (high_scores_y + 10 + high_scorer_y * (offset+1))))        
+
+    # Print restart message
+    restart_msg = game_over_score_font.render("Continue? y/n", True, (255, 255, 255))
+    restart_msg_x, restart_msg_y = game_over_score_font.size("Continue? y/n")
+    screen.blit(restart_msg, ((SCREEN_WIDTH/2-restart_msg_x/2), (SCREEN_HEIGHT-restart_msg_y)))
+
+#--------------------------------------------------------- #
+def get_high_scores(high_score_file = 'high_scores.txt'):
+    '''Returns a sorted dictionary of high scores, read from high_scores.txt'''
+    scorers_list = []
+    # Read high scores from file and display them
+    with open(high_score_file, 'r') as f:
+        for line in f:
+            line = line.strip()
+            scorer, score = line.split("\t")
+            scorers_list.append((scorer, int(score)))
+    return scorers_list # this should be read in sorted order
+# -------------------------------------------------------- #
+def write_high_scores(score_list, output_file='high_scores.txt'):
+    '''Writes the sorted dictionary of scores to a file'''
+    file_handler = open(output_file, 'w')
+    for item in score_list:
+        file_handler.write(f"{item[0]}\t{item[1]}\n")
+    file_handler.close()
 #--------------------------------------------------------- #
 def collision(enemy_x, enemy_y, other_x, other_y):
     '''Detect collision between enemy and bullet'''
@@ -66,6 +118,9 @@ SCREEN_HEIGHT = 600
 SPRITE_DIAGONAL_HALF = int(math.sqrt(2 * (DEFAULT_SPRITE_SIZE[0]**2))/2)
 # NUMBER OF ENEMIES
 NUM_ENEMIES = 6
+
+# List holding initilals inserted by the user after game over
+initials = []
 # --------------------------------- #
 # ------------ GAME INIT ---------- #
 # Initialize the game to have access to all its modules
@@ -162,9 +217,13 @@ game_over_font = pygame.font.Font("freesansbold.ttf", 64)
 game_over_score_font = pygame.font.Font("freesansbold.ttf", 32)
 # ----------------------------------------------------------------- #
 # GAME LOOP STARTS HERE ONWARDS
-game_over    = False
+
+# Game state flags
+game_over = False
 game_over_sounded = False
 game_running = True
+display_scores = False
+await_restart  = False
 while game_running:
     # Set the color of the screen. Draw this initiallt to not
     # draw over anything else that should appear on the screen
@@ -181,6 +240,74 @@ while game_running:
 
         # Handle keyboard input
         if event.type == pygame.KEYDOWN:
+
+            # If we are at game over state
+            # get the initials
+            if game_over:
+                # The key will be a number
+                key_pressed = event.key
+                # ... the range here is a-z
+                if key_pressed in range(97, 123):
+                    # Add the character to the initials list
+                    initials.append(chr(key_pressed))
+
+                    if len(initials) == 3:
+                        # Write score to file
+                        scores_list = get_high_scores('high_scores.txt')
+                        # keep 10 scores at maximum. completely rewrite the file if a new score enters
+                        lowest_score = min([int(score[1]) for score in scores_list]) if scores_list else 0
+                        # Add to dictionary
+                        if not scores_list or score >= lowest_score:
+                            current_name = "".join(initials)
+                            scores_list.append((current_name, score))
+                            # Rewrite file
+                            scores_list.sort(key = lambda x: x[1], reverse=True)
+                            # Write up to the 15th element only - keep the list short
+                            write_high_scores(scores_list[:10])
+
+                        # Update game state
+                        display_scores = True
+
+                elif key_pressed == pygame.K_BACKSPACE and initials:
+                    initials.pop()
+
+            if display_scores:
+                # Quit or restart
+                if event.key == pygame.K_n:
+                    game_running = False
+                if event.key == pygame.K_y:
+                    # Reinitialize all game variables
+                    display_scores = False
+                    game_over = False
+                    game_running = True
+                    score = 0 
+                    initials = []
+                    await_restart = False
+                    ships_destroyed = 0 
+                    # Re-initialize enemies
+                    enemy_x  = []
+                    enemy_y  = []
+                    enemy_dx = []
+                    enemy_dy = []
+                    # This will hold an offset per enemy, so that
+                    # they respawn lower each time to make the game more difficult
+                    enemy_vertical_offset = []
+                    # ENEMY LIST initialization
+                    for i in range(NUM_ENEMIES):
+                        # Enemy image initial (random) location
+                        enemy_x.append(random.randint(0,SCREEN_WIDTH-enemy_image.get_width())) # this is about the middle of the screen
+                        enemy_y.append(random.randint(int(SCREEN_HEIGHT*0.01),int(SCREEN_HEIGHT*0.3)))
+                        # Setup initial enemy movement parameters
+                        enemy_dx.append(0.3)
+                        enemy_dy.append(enemy_image.get_height() / 3)
+                        enemy_vertical_offset.append(0)                    
+
+
+            '''
+            # Force game over for testing
+            if event.key == pygame.K_q:
+                game_over = True
+            '''
             # If escape is pressed, exit windoe
             if event.key == pygame.K_ESCAPE:
                 game_running = False
@@ -263,7 +390,7 @@ while game_running:
                 # Reset invisibility of bullet - coordinates are set at new space bar press
                 bullet_visible = False
                 # Reset enemy appearance
-                enemy_vertical_offset[i] += 2
+                enemy_vertical_offset[i] += 10
                 enemy_x[i] = random.randint(0,SCREEN_WIDTH-enemy_image.get_width())
                 # Also add extra offset on respawn
                 enemy_y[i] = random.randint(int(SCREEN_HEIGHT*0.01) + enemy_vertical_offset[i],int(SCREEN_HEIGHT*0.3) + enemy_vertical_offset[i])
@@ -282,14 +409,22 @@ while game_running:
     # -------------------------------------------------------------- #
     # DRAW SPRITES    
     draw_sprite(player_x, player_y, player_image) # player
-    # Redraw enemies - except if we lost
+    # Redraw enemies - except if we are in a game state that doesn't require it
     if not game_over:
         for i in range(NUM_ENEMIES):
             draw_sprite(enemy_x[i], enemy_y[i], enemy_image)
-    else:
-        game_over_render(game_over_font, game_over_score_font, score, ships_destroyed)
+    elif game_over and not display_scores:
+        game_over_render(game_over_font, game_over_score_font, score, ships_destroyed, initials)
+    elif display_scores:
+        if not await_restart:
+            score_dictionary = get_high_scores('high_scores.txt')
+
+        show_high_scores(game_over_score_font, score_dictionary)
+        await_restart = True
+
     # Draw bullet
     if bullet_visible and not game_over:
+        high_score_dict = get_high_scores()
         draw_sprite(bullet_x, bullet_y, bullet_image)
     
     # Render Score
